@@ -1,5 +1,7 @@
 # DraftJS: Import Element to ContentState
 
+This repo is a clone from [draft-js-utils](https://github.com/sstur/draft-js-utils). It's changed to work with images using the [react-draft-wysiwyg](https://github.com/jpuri/react-draft-wysiwyg) editor, instead of the default draft-js editor. We use this module in the print queue app.
+
 This is a module for [DraftJS](https://github.com/facebook/draft-js) that will convert an HTML DOM Element to editor content.
 
 It was extracted from [React-RTE](https://react-rte.org) and placed into a separate module for more general use. Hopefully it can be helpful in your projects.
