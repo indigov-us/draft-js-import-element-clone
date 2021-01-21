@@ -223,6 +223,7 @@ class ContentGenerator {
     if (!contentBlocks.length) {
       contentBlocks = [EMPTY_BLOCK];
     }
+
     return ContentState.createFromBlockArray(
       contentBlocks,
       this.contentStateForEntities.getEntityMap(),
@@ -273,6 +274,59 @@ class ContentGenerator {
       }
     }
   }
+
+  processImageElement(element: DOMElement) {
+    const parent = this.blockStack.slice(-1)[0]
+
+    const imageData = getEntityData('img', element)
+    const data = {
+      ...imageData,
+      height: imageData['data-original-height'] || 'auto',
+      width: imageData['data-original-width'] || 'auto'
+    }
+
+    const entityKey = this.createEntity(ENTITY_TYPE.IMAGE, data)
+
+    if (parent.tagName === 'figure') {
+      parent.entityStack.push(entityKey)
+
+      // self closing tag
+      this.processText('\u00A0');
+      return;
+    }
+
+    let atomicBlock: ParsedBlock = {
+      tagName: 'figure',
+      textFragments: [],
+      type:  BLOCK_TYPE.ATOMIC,
+      styleStack: [NO_STYLE],
+      entityStack: [NO_ENTITY],
+      depth: 0,
+      data: null,
+    };
+
+    atomicBlock.entityStack.push(entityKey)
+    this.blockList.push(atomicBlock)
+    this.blockStack.push(atomicBlock)
+
+    // self closing tag
+    this.processText('\u00A0');
+
+    // empty block for selection under image
+    const emptyBlock: ParsedBlock = {
+      tagName: 'span',
+      textFragments: [],
+      type: BLOCK_TYPE.UNSTYLED,
+      styleStack: [NO_STYLE],
+      entityStack: [NO_ENTITY],
+      depth: 0,
+      data: null
+    }
+
+    this.blockList.push(emptyBlock)
+    this.blockStack.push(emptyBlock)
+  }
+
   processBlockElement(element: DOMElement) {
     if (!element) {
       return;
@@ -405,8 +459,9 @@ class ContentGenerator {
       // $FlowIssue
       let element: DOMElement = node;
       let tagName = element.nodeName.toLowerCase();
-
-      if (INLINE_ELEMENTS.hasOwnProperty(tagName)) {
+      if (tagName === 'img') {
+        this.processImageElement(element)
+      } else if (INLINE_ELEMENTS.hasOwnProperty(tagName)) {
         this.processInlineElement(element);
       } else {
         this.processBlockElement(element);
