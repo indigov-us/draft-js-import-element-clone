@@ -149,7 +149,9 @@ var ContentGenerator = /*#__PURE__*/function () {
     this.blockStack = []; // This is a linear list of blocks that will form the output; for example
     // [p, li, li, blockquote].
 
-    this.blockList = [];
+    this.blockList = []; // Keep a list of images inside `p` tags that we want to insert after that block
+
+    this.imageStack = [];
     this.depth = 0;
   }
 
@@ -274,8 +276,14 @@ var ContentGenerator = /*#__PURE__*/function () {
     }
   }, {
     key: "processImageElement",
-    value: function processImageElement(element) {
-      var parent = this.blockStack.slice(-1)[0];
+    value: function processImageElement(element, isImageStack) {
+      var parent = this.blockStack.slice(-1)[0]; // images can't be rendered inside a `p`, push to image stack
+
+      if (parent.tagName === 'p' && !isImageStack) {
+        this.imageStack.push(element);
+        return;
+      }
+
       var imageData = getEntityData('img', element);
 
       var data = _objectSpread(_objectSpread({}, imageData), {}, {
@@ -305,7 +313,8 @@ var ContentGenerator = /*#__PURE__*/function () {
       this.blockList.push(atomicBlock);
       this.blockStack.push(atomicBlock); // self closing tag
 
-      this.processText("\xA0"); // empty block for selection under image
+      this.processText("\xA0");
+      this.blockStack.pop(); // empty block for selection under image
 
       var emptyBlock = {
         tagName: 'span',
@@ -318,10 +327,13 @@ var ContentGenerator = /*#__PURE__*/function () {
       };
       this.blockList.push(emptyBlock);
       this.blockStack.push(emptyBlock);
+      this.blockStack.pop();
     }
   }, {
     key: "processBlockElement",
     value: function processBlockElement(element) {
+      var _this2 = this;
+
       if (!element) {
         return;
       }
@@ -390,6 +402,14 @@ var ContentGenerator = /*#__PURE__*/function () {
 
       if (element.childNodes != null) {
         Array.from(element.childNodes).forEach(this.processNode, this);
+      }
+
+      if (this.imageStack.length !== 0) {
+        this.imageStack.forEach(function (element) {
+          _this2.processImageElement(element, true);
+
+          _this2.imageStack.pop();
+        });
       }
 
       this.blockStack.pop();

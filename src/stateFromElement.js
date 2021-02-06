@@ -183,6 +183,8 @@ class ContentGenerator {
     // This is a linear list of blocks that will form the output; for example
     // [p, li, li, blockquote].
     this.blockList = [];
+    // Keep a list of images inside `p` tags that we want to insert after that block
+    this.imageStack = []
     this.depth = 0;
   }
 
@@ -275,8 +277,14 @@ class ContentGenerator {
     }
   }
 
-  processImageElement(element: DOMElement) {
+  processImageElement(element: DOMElement, isImageStack?: boolean) {
     const parent = this.blockStack.slice(-1)[0]
+
+    // images can't be rendered inside a `p`, push to image stack
+    if (parent.tagName === 'p' && !isImageStack) {
+      this.imageStack.push(element)
+      return;
+    }
 
     const imageData = getEntityData('img', element)
     const data = {
@@ -311,6 +319,7 @@ class ContentGenerator {
 
     // self closing tag
     this.processText('\u00A0');
+    this.blockStack.pop()
 
     // empty block for selection under image
     const emptyBlock: ParsedBlock = {
@@ -325,6 +334,7 @@ class ContentGenerator {
 
     this.blockList.push(emptyBlock)
     this.blockStack.push(emptyBlock)
+    this.blockStack.pop()
   }
 
   processBlockElement(element: DOMElement) {
@@ -380,6 +390,14 @@ class ContentGenerator {
     if (element.childNodes != null) {
       Array.from(element.childNodes).forEach(this.processNode, this);
     }
+
+    if (this.imageStack.length !== 0) {
+      this.imageStack.forEach(element => {
+        this.processImageElement(element, true)
+        this.imageStack.pop()
+      })
+    }
+
     this.blockStack.pop();
     if (allowRender && hasDepth) {
       this.depth -= 1;
